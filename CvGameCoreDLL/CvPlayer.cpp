@@ -64,7 +64,7 @@ CvPlayer::CvPlayer()
 	m_aiDomainExperienceModifiers = new int[NUM_DOMAIN_TYPES];
 	m_aiStabilityParameters = new int[NUM_PARAMETERS];
 	m_aiModifiers = new int[NUM_MODIFIER_TYPES];
-	m_aiSpreadFactors = new int[NUM_RELIGIONS];
+	m_aiReligionYieldChange = new int[NUM_YIELD_TYPES];
 
 	m_abFeatAccomplished = new bool[NUM_FEAT_TYPES];
 	m_abOptions = new bool[NUM_PLAYEROPTION_TYPES];
@@ -138,7 +138,7 @@ CvPlayer::~CvPlayer()
 	SAFE_DELETE_ARRAY(m_aiDomainExperienceModifiers); // Leoreth
 	SAFE_DELETE_ARRAY(m_aiStabilityParameters); // Leoreth
 	SAFE_DELETE_ARRAY(m_aiModifiers); // Leoreth
-	SAFE_DELETE_ARRAY(m_aiSpreadFactors); // Leoreth
+	SAFE_DELETE_ARRAY(m_aiReligionYieldChange); // Leoreth
 	SAFE_DELETE_ARRAY(m_abFeatAccomplished);
 	SAFE_DELETE_ARRAY(m_abOptions);
 }
@@ -539,13 +539,8 @@ void CvPlayer::reset(PlayerTypes eID, bool bConstructorCall)
 
 	m_bTurnPlayed = false;
 
-	// Rhye (jdog) - start ---------------------
-	//m_szName.clear();
 	m_szCivDesc.clear();
 	m_szCivDescKey.clear();
-	//m_szCivShort.clear();
-	//m_szCivAdj.clear();
-	// Rhye (jdog) - end -----------------------
 
 	//Leoreth
 	m_bReborn = false;
@@ -584,7 +579,8 @@ void CvPlayer::reset(PlayerTypes eID, bool bConstructorCall)
 		m_aiCapitalYieldRateModifier[iI] = 0;
 		m_aiExtraYieldThreshold[iI] = 0;
 		m_aiTradeYieldModifier[iI] = 0;
-		m_aiSpecialistExtraYield[iI] = 0; //Leoreth
+		m_aiSpecialistExtraYield[iI] = 0; // Leoreth
+		m_aiReligionYieldChange[iI] = 0; // Leoreth
 	}
 
 	for (iI = 0; iI < NUM_COMMERCE_TYPES; iI++)
@@ -616,12 +612,6 @@ void CvPlayer::reset(PlayerTypes eID, bool bConstructorCall)
 	for (iI = 0; iI < NUM_MODIFIER_TYPES; iI++)
 	{
 		m_aiModifiers[iI] = 0;
-	}
-
-	// Leoreth
-	for (iI = 0; iI < NUM_RELIGIONS; iI++)
-	{
-		m_aiSpreadFactors[iI] = 0;
 	}
 
 	for (iI = 0; iI < MAX_PLAYERS; iI++)
@@ -1620,6 +1610,12 @@ void CvPlayer::acquireCity(CvCity* pOldCity, bool bConquest, bool bTrade, bool b
 		paiNumRealBuilding[iI] = pOldCity->getNumRealBuilding((BuildingTypes)iI);
 		paiBuildingOriginalOwner[iI] = pOldCity->getBuildingOriginalOwner((BuildingTypes)iI);
 		paiBuildingOriginalTime[iI] = pOldCity->getBuildingOriginalTime((BuildingTypes)iI);
+	}
+
+	// Leoreth: don't copy state religion building effect from previous owner
+	for (iI = 0; iI < NUM_YIELD_TYPES; iI++)
+	{
+		pOldCity->changeReligionYieldChange(GET_PLAYER(eOldOwner).getStateReligion(),(YieldTypes)iI, -GET_PLAYER(eOldOwner).getReligionYieldChange((YieldTypes)iI));
 	}
 
 	std::vector<BuildingYieldChange> aBuildingYieldChange;
@@ -6789,6 +6785,7 @@ void CvPlayer::processBuilding(BuildingTypes eBuilding, int iChange, CvArea* pAr
 		changeSeaPlotYield(((YieldTypes)iI), (GC.getBuildingInfo(eBuilding).getGlobalSeaPlotYieldChange(iI) * iChange));
 		pArea->changeYieldRateModifier(getID(), ((YieldTypes)iI), (GC.getBuildingInfo(eBuilding).getAreaYieldModifier(iI) * iChange));
 		changeYieldRateModifier(((YieldTypes)iI), (GC.getBuildingInfo(eBuilding).getGlobalYieldModifier(iI) * iChange));
+		changeReligionYieldChange((YieldTypes)iI, GC.getBuildingInfo(eBuilding).getReligionYieldChange(iI) * iChange);
 	}
 
 	for (iI = 0; iI < NUM_COMMERCE_TYPES; iI++)
@@ -7314,7 +7311,7 @@ int CvPlayer::calculateInflationRate() const
 	iRatePercent *= getModifier(MODIFIER_INFLATION_RATE);
 	iRatePercent /= 100;
 
-	FAssert(iRate >= 0);
+	FAssert(iRatePercent >= 0);
 
 	return iRatePercent;
 }
@@ -7972,6 +7969,15 @@ bool CvPlayer::canDoReligion(ReligionTypes eReligion) const
 		return false;
 	}
 
+	if (GC.getReligionInfo(eReligion).isLocal())
+	{
+		CvCity* pHolyCity = GC.getGame().getHolyCity(eReligion);
+		if (pHolyCity == NULL || pHolyCity->getOwner() != getID())
+		{
+			return false;
+		}
+	}
+
 	return true;
 }
 
@@ -8168,16 +8174,16 @@ void CvPlayer::foundReligion(ReligionTypes eReligion, ReligionTypes eSlotReligio
 					iValue *= 4;
 			}
 			if (pLoopCity->getX() == 72 && pLoopCity->getY() == 29 && pLoopCity->getOwner() == (PlayerTypes)ETHIOPIA) //Aksum
-				if (eReligion == CATHOLICISM)
+				if (eReligion == ORTHODOXY)
 					iValue *= 4;
 			if (eReligion == (ReligionTypes)ZOROASTRIANISM && pLoopCity->getX() == 82 && pLoopCity->getY() == 39) //Parsa
 				iValue *= 8;
 
-			if (eReligion == (ReligionTypes)ORTHODOXY && pLoopCity->isCapital())
-				iValue = 100;
-
-			if (eReligion == (ReligionTypes)ORTHODOXY && !pLoopCity->isCapital())
-				iValue = 5;
+			if (eReligion == ORTHODOXY)
+			{
+				if (pLoopCity->isHasReligion(JUDAISM)) iValue *= 2;
+				if (pLoopCity->isHolyCity(JUDAISM)) iValue *= 2;
+			}
 
 			if (eReligion == (ReligionTypes)PROTESTANTISM)
 			{
@@ -8194,12 +8200,6 @@ void CvPlayer::foundReligion(ReligionTypes eReligion, ReligionTypes eSlotReligio
 				}
 			}
 
-			//Rhye - end
-
-			//Leoreth: exclude 1 population cities because it doesn't make sense to have a religion founded there
-			//if (pLoopCity->getPopulation() == 1)
-            //    iValue = 1;
-
 			iValue = std::max(1, iValue);
 
 			if (iValue > iBestValue)
@@ -8213,6 +8213,8 @@ void CvPlayer::foundReligion(ReligionTypes eReligion, ReligionTypes eSlotReligio
 	if (pBestCity != NULL)
 	{
 		GC.getGameINLINE().setHolyCity(eReligion, pBestCity, true);
+		
+		log(CvWString::format(L"Found religion %s in %s in year %d", GC.getReligionInfo(eReligion).getText(), pBestCity->getName().GetCString(), GC.getGame().getGameTurnYear()));
 
 		if (bAward)
 		{
@@ -10484,11 +10486,22 @@ void CvPlayer::changeStateReligionCount(int iChange)
 		// religion visibility now part of espionage
 		//GC.getGameINLINE().updateCitySight(false, true);
 
+		bool bOldValue = isStateReligion();
+
 		m_iStateReligionCount = (m_iStateReligionCount + iChange);
 		FAssert(getStateReligionCount() >= 0);
 
 		// religion visibility now part of espionage
 		//GC.getGameINLINE().updateCitySight(true, true);
+
+		// Leoreth: state religion building yield change
+		if (bOldValue != isStateReligion())
+		{
+			for (int iI = 0; iI < NUM_YIELD_TYPES; iI++)
+			{
+				updateReligionYieldChange(getLastStateReligion(), (YieldTypes)iI, (isStateReligion() ? 1 : -1) * getReligionYieldChange((YieldTypes)iI));
+			}
+		}
 
 		updateMaintenance();
 		updateReligionHappiness();
@@ -11748,6 +11761,12 @@ void CvPlayer::setLastStateReligion(ReligionTypes eNewValue)
 
 		// religion visibility now part of espionage
 		//GC.getGameINLINE().updateCitySight(true, true);
+
+		for (int iI = 0; iI < NUM_YIELD_TYPES; iI++)
+		{
+			updateReligionYieldChange(eOldReligion, (YieldTypes)iI, -getReligionYieldChange((YieldTypes)iI));
+			updateReligionYieldChange(eNewValue, (YieldTypes)iI, getReligionYieldChange((YieldTypes)iI));
+		}
 
 		updateMaintenance();
 		updateReligionHappiness();
@@ -17941,6 +17960,7 @@ void CvPlayer::read(FDataStreamBase* pStream)
 	pStream->Read(NUM_YIELD_TYPES, m_aiCapitalYieldRateModifier);
 	pStream->Read(NUM_YIELD_TYPES, m_aiExtraYieldThreshold);
 	pStream->Read(NUM_YIELD_TYPES, m_aiTradeYieldModifier);
+	pStream->Read(NUM_YIELD_TYPES, m_aiReligionYieldChange); // Leoreth
 	pStream->Read(NUM_COMMERCE_TYPES, m_aiFreeCityCommerce);
 	pStream->Read(NUM_COMMERCE_TYPES, m_aiCommercePercent);
 	pStream->Read(NUM_COMMERCE_TYPES, m_aiCommerceRate);
@@ -17957,7 +17977,6 @@ void CvPlayer::read(FDataStreamBase* pStream)
 	pStream->Read(NUM_DOMAIN_TYPES, m_aiDomainExperienceModifiers);
 	pStream->Read(NUM_PARAMETERS, m_aiStabilityParameters);
 	pStream->Read(NUM_MODIFIER_TYPES, m_aiModifiers);
-	pStream->Read(NUM_RELIGIONS, m_aiSpreadFactors);
 
 	pStream->Read(NUM_FEAT_TYPES, m_abFeatAccomplished);
 	pStream->Read(NUM_PLAYEROPTION_TYPES, m_abOptions);
@@ -18465,6 +18484,7 @@ void CvPlayer::write(FDataStreamBase* pStream)
 	pStream->Write(NUM_YIELD_TYPES, m_aiCapitalYieldRateModifier);
 	pStream->Write(NUM_YIELD_TYPES, m_aiExtraYieldThreshold);
 	pStream->Write(NUM_YIELD_TYPES, m_aiTradeYieldModifier);
+	pStream->Write(NUM_YIELD_TYPES, m_aiReligionYieldChange); // Leoreth
 	pStream->Write(NUM_COMMERCE_TYPES, m_aiFreeCityCommerce);
 	pStream->Write(NUM_COMMERCE_TYPES, m_aiCommercePercent);
 	pStream->Write(NUM_COMMERCE_TYPES, m_aiCommerceRate);
@@ -18481,7 +18501,6 @@ void CvPlayer::write(FDataStreamBase* pStream)
 	pStream->Write(NUM_DOMAIN_TYPES, m_aiDomainExperienceModifiers);
 	pStream->Write(NUM_PARAMETERS, m_aiStabilityParameters);
 	pStream->Write(NUM_MODIFIER_TYPES, m_aiModifiers);
-	pStream->Write(NUM_RELIGIONS, m_aiSpreadFactors);
 
 	pStream->Write(NUM_FEAT_TYPES, m_abFeatAccomplished);
 	pStream->Write(NUM_PLAYEROPTION_TYPES, m_abOptions);
@@ -24758,37 +24777,17 @@ EraTypes CvPlayer::getStartingEra() const
 void CvPlayer::setStartingEra(EraTypes eNewValue)
 {
 	m_eStartingEra = eNewValue;
-}
 
-int CvPlayer::getSpreadFactor(ReligionTypes eReligion) const
-{
-	int iSpreadFactor = m_aiSpreadFactors[eReligion];
-
-	if (eReligion == CATHOLICISM)
+	if (eNewValue > ERA_ANCIENT && GC.getGameINLINE().isFinalInitialized() && !(gDLL->GetWorldBuilderMode()))
 	{
-		if (!GC.getGameINLINE().isReligionFounded((ReligionTypes)ORTHODOXY))
+		CvPopupInfo* pInfo = new CvPopupInfo(BUTTONPOPUP_PYTHON_SCREEN);
+		if (NULL != pInfo)
 		{
-			if (iSpreadFactor < m_aiSpreadFactors[ORTHODOXY])
-			{
-				iSpreadFactor = m_aiSpreadFactors[ORTHODOXY];
-			}
-		}
-
-		if (!GC.getGameINLINE().isReligionFounded((ReligionTypes)PROTESTANTISM))
-		{
-			if (iSpreadFactor < m_aiSpreadFactors[PROTESTANTISM])
-			{
-				iSpreadFactor = m_aiSpreadFactors[PROTESTANTISM];
-			}
+			pInfo->setData1(eNewValue);
+			pInfo->setText(L"showEraMovie");
+			addPopup(pInfo);
 		}
 	}
-
-	return iSpreadFactor;
-}
-
-void CvPlayer::setSpreadFactor(ReligionTypes eReligion, int iNewValue)
-{
-	m_aiSpreadFactors[eReligion] = iNewValue;
 }
 
 int CvPlayer::distance(PlayerTypes ePlayer)
@@ -24893,4 +24892,121 @@ int CvPlayer::AI_getReligiousTolerance() const
 void CvPlayer::setReligiousTolerance(int iNewValue)
 {
 	m_iReligiousTolerance = iNewValue;
+}
+
+bool CvPlayer::isTolerating(ReligionTypes eReligion) const
+{
+	ReligionTypes eStateReligion = getStateReligion();
+
+	if (eStateReligion == HINDUISM && eReligion == BUDDHISM) return true;
+	if (eStateReligion == BUDDHISM && eReligion == HINDUISM) return true;
+	if (eStateReligion == CONFUCIANISM && eReligion == TAOISM) return true;
+	if (eStateReligion == TAOISM && eReligion == CONFUCIANISM) return true;
+
+	return false;
+}
+
+ReligionSpreadTypes CvPlayer::getSpreadType(CvPlot* pPlot, ReligionTypes eReligion) const
+{
+	bool bStateReligion = getStateReligion() == eReligion;
+	int iSpreadFactor = pPlot->getSpreadFactor(eReligion);
+
+	if (!bStateReligion && isNoNonStateReligionSpread()) return RELIGION_SPREAD_NONE;
+
+	if ((isMinorCiv() || isBarbarian()) && iSpreadFactor <= REGION_SPREAD_MINORITY) return RELIGION_SPREAD_NONE;
+
+	int iCurrentTurn = GC.getGame().getGameTurn();
+	int iFoundingTurn = GC.getGame().getReligionGameTurnFounded(eReligion);
+
+	if (iCurrentTurn - iFoundingTurn <= getTurns(GC.getDefineINT("RELIGION_FOUNDING_SPREAD_TURNS")))
+	{
+		if (iSpreadFactor == REGION_SPREAD_CORE) return RELIGION_SPREAD_FAST;
+		if (iSpreadFactor == REGION_SPREAD_HISTORICAL && GC.getReligionInfo(eReligion).isProselytizing() && (bStateReligion || getStateReligion() == NO_RELIGION)) return RELIGION_SPREAD_FAST;
+	}
+
+	switch (iSpreadFactor)
+	{
+		case REGION_SPREAD_CORE: return RELIGION_SPREAD_NORMAL;
+		case REGION_SPREAD_HISTORICAL: return bStateReligion ? RELIGION_SPREAD_NORMAL : RELIGION_SPREAD_MINORITY;
+		case REGION_SPREAD_PERIPHERY: return bStateReligion ? RELIGION_SPREAD_NORMAL : RELIGION_SPREAD_NONE;
+		case REGION_SPREAD_MINORITY: return RELIGION_SPREAD_MINORITY;
+		case REGION_SPREAD_NONE: return bStateReligion ? RELIGION_SPREAD_MINORITY : RELIGION_SPREAD_NONE;
+		default: return RELIGION_SPREAD_NONE;
+	}
+
+	return RELIGION_SPREAD_NONE;
+}
+
+bool CvPlayer::isDistantSpread(CvCity* pCity, ReligionTypes eReligion) const
+{
+	if (!GC.getGame().isReligionFounded(eReligion)) return false;
+
+	if (pCity->plot()->getSpreadFactor(eReligion) < REGION_SPREAD_HISTORICAL) return false;
+
+	if (getStateReligion() == eReligion)
+	{
+		if (pCity->getReligionCount() > 0) return false;
+
+		CvCity* pCapitalCity = getCapitalCity();
+		if (pCapitalCity != NULL)
+		{
+			if (pCapitalCity->getArea() != pCity->getArea())
+			{
+				//if (GC.getMap().getArea(pCity->getArea())->countHasReligion(eReligion, getID()) == 0)
+				if (2 * GC.getMap().getArea(pCity->getArea())->countHasReligion(eReligion, getID()) <= GC.getMap().getArea(pCity->getArea())->getCitiesPerPlayer(getID()))
+				{
+					return true;
+				}
+			}
+		}
+	}
+	else if (getStateReligion() == NO_RELIGION)
+	{
+		if (GC.getMap().getArea(pCity->getArea())->countHasReligion(eReligion, getID()) > 0) return false;
+
+		for (int iI = 0; iI < NUM_MAJOR_PLAYERS; iI++)
+		{
+			if (getID() != iI)
+			{
+				if (GET_PLAYER((PlayerTypes)iI).getStateReligion() == eReligion)
+				{
+					if (canContact((PlayerTypes)iI) && canTradeNetworkWith((PlayerTypes)iI))
+					{
+						return true;
+					}
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+int CvPlayer::getReligionYieldChange(YieldTypes eYield) const
+{
+	return m_aiReligionYieldChange[eYield];
+}
+
+void CvPlayer::setReligionYieldChange(YieldTypes eYield, int iNewValue)
+{
+	int iOldValue = getReligionYieldChange(eYield);
+
+	m_aiReligionYieldChange[eYield] = iNewValue;
+
+	updateReligionYieldChange(getStateReligion(), eYield, iNewValue - iOldValue);
+}
+
+void CvPlayer::changeReligionYieldChange(YieldTypes eYield, int iChange)
+{
+	setReligionYieldChange(eYield, getReligionYieldChange(eYield) + iChange);
+}
+
+void CvPlayer::updateReligionYieldChange(ReligionTypes eReligion, YieldTypes eYield, int iChange)
+{
+	int iLoop;
+	CvCity* pCity;
+	for (pCity = firstCity(&iLoop); pCity != NULL; pCity = nextCity(&iLoop))
+	{
+		pCity->changeReligionYieldChange(eReligion, eYield, iChange);
+	}
 }

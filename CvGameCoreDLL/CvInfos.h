@@ -1819,6 +1819,9 @@ public:
 	int getBonusYieldChange(int i, int j) const;
 	int* getBonusYieldChangeArray(int i) const;
 
+	int getReligionYieldChange(int i) const;
+	int* getReligionYieldChangeArray() const;
+
 	// Leoreth
 	int getPrereqBuildingClassPercent(int i) const;
 
@@ -1998,6 +2001,7 @@ protected:
 
 	// Leoreth
 	int* m_piPrereqBuildingClassPercent;
+	int* m_piReligionYieldChange;
 
 	bool* m_pbCommerceFlexible;
 	bool* m_pbCommerceChangeOriginalOwner;
@@ -4165,6 +4169,10 @@ public:
 	int getMissionType() const;					// Exposed to Python
 	void setMissionType(int iNewType);
 
+	// Leoreth
+	bool isProselytizing() const;
+	bool isLocal() const;
+
 	const TCHAR* getTechButton() const;				// Exposed to Python
 	void setTechButton(const TCHAR* szVal);
 	const TCHAR* getGenericTechButton() const;				// Exposed to Python
@@ -4203,6 +4211,10 @@ protected:
 	int m_iNumFreeUnits;
 	int m_iSpreadFactor;
 	int m_iMissionType;
+
+	// Leoreth
+	bool m_bProselytizing;
+	bool m_bLocal;
 
 	CvString m_szTechButton;
 	CvString m_szGenericTechButton;

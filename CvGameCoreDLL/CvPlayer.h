@@ -899,6 +899,11 @@ public:
 	int getImprovementYieldChange(ImprovementTypes eIndex1, YieldTypes eIndex2) const;								// Exposed to Python
 	void changeImprovementYieldChange(ImprovementTypes eIndex1, YieldTypes eIndex2, int iChange);
 
+	int getReligionYieldChange(YieldTypes eYield) const;
+	void setReligionYieldChange(YieldTypes eYield, int iNewValue);
+	void changeReligionYieldChange(YieldTypes eYield, int iChange);
+	void updateReligionYieldChange(ReligionTypes eReligion, YieldTypes eYield, int iChange);
+
 	void updateGroupCycle(CvUnit* pUnit);
 	void removeGroupCycle(int iID);
 	CLLNode<int>* deleteGroupCycleNode(CLLNode<int>* pNode);
@@ -1189,9 +1194,6 @@ public:
 	int getModifier(ModifierTypes eModifier) const;
 	void setModifier(ModifierTypes eModifier, int iNewValue);
 
-	int getSpreadFactor(ReligionTypes eReligion) const;
-	void setSpreadFactor(ReligionTypes eReligion, int iNewValue);
-
 	int getBirthYear() const;
 	int getBirthTurn() const;
 	void setBirthYear(int iNewValue);
@@ -1216,6 +1218,10 @@ public:
 	int countSlaveCities() const;
 	int countRequiredSlaves() const;
 	CvCity* findSlaveCity() const;
+
+	bool isTolerating(ReligionTypes eReligion) const;
+	bool isDistantSpread(CvCity* pCity, ReligionTypes eReligion) const;
+	ReligionSpreadTypes getSpreadType(CvPlot* pPlot, ReligionTypes eReligion) const;
 
 	int getStabilityParameter(ParameterTypes eParameter) const;
 	void setStabilityParameter(ParameterTypes eParameter, int iNewValue);
@@ -1437,7 +1443,8 @@ protected:
 
 	int* m_aiStabilityParameters;
 	int* m_aiModifiers;
-	int* m_aiSpreadFactors;
+
+	int* m_aiReligionYieldChange;
 
 	bool* m_abFeatAccomplished;
 	bool* m_abOptions;

@@ -142,7 +142,7 @@ void CvUnit::init(int iID, UnitTypes eUnit, UnitAITypes eUnitAI, PlayerTypes eOw
 		}*/
 
 		//Leoreth: names in chronological order, but allow some randomness that increases with the game era
-		int iOffset = GC.getGameINLINE().getSorenRandNum(GET_PLAYER(eOwner).getCurrentEra()/2, "Unit name selection");
+		/*int iOffset = GC.getGameINLINE().getSorenRandNum(GET_PLAYER(eOwner).getCurrentEra()/2, "Unit name selection");
 
 		int iIndex;
 		for (iI = 0; iI < iNumNames; iI++)
@@ -156,7 +156,7 @@ void CvUnit::init(int iID, UnitTypes eUnit, UnitAITypes eUnitAI, PlayerTypes eOw
 				GC.getGameINLINE().addGreatPersonBornName(szName);
 				break;
 			}
-		}
+		}*/
 	}
 
 	setGameTurnCreated(GC.getGameINLINE().getGameTurn());
@@ -5577,7 +5577,7 @@ bool CvUnit::canSpread(const CvPlot* pPlot, ReligionTypes eReligion, bool bTestV
 		return false;
 	}
 
-	if (pCity->isHasReligion(eReligion))
+	if (!pCity->canSpread(eReligion, true))
 	{
 		return false;
 	}
@@ -5644,28 +5644,35 @@ bool CvUnit::spread(ReligionTypes eReligion)
 
 	if (pCity != NULL)
 	{
-		iSpreadProb = m_pUnitInfo->getReligionSpreads(eReligion);
+		/*iSpreadProb = m_pUnitInfo->getReligionSpreads(eReligion);
 
 		if (pCity->getTeam() != getTeam())
 		{
-			//iSpreadProb /= 2;
-			// Leoreth: use civ specific spread probabilities instead, should prevent unrealistic spread through missionaries
-			iSpreadProb *= GET_PLAYER(pCity->getOwner()).getSpreadFactor(eReligion);
-			iSpreadProb /= 400;
+			iSpreadProb *= 50;
+			iSpreadProb /= pCity->getTurnsToSpread(eReligion);
 		}
-
-		bool bSuccess;
 
 		iSpreadProb += (((GC.getNumReligionInfos() - pCity->getReligionCount()) * (100 - iSpreadProb)) / GC.getNumReligionInfos());
 
 		if (getOwnerINLINE() == TIBET)
 		{
 			iSpreadProb += (100 - iSpreadProb)/2;
+		}*/
+
+		iSpreadProb = std::max(1, (pCity->getTurnsToSpread(eReligion) - 50) / 50 + (pCity->getTeam() != getTeam()) ? 1 : 0);
+
+		if (getOwnerINLINE() == TIBET)
+		{
+			iSpreadProb = std::max(1, iSpreadProb - 1);
 		}
 
-		if (GC.getGameINLINE().getSorenRandNum(100, "Unit Spread Religion") < iSpreadProb)
+		bool bSuccess;
+
+		if (GC.getGameINLINE().getSorenRandNum(iSpreadProb, "Unit Spread Religion") == 0)
 		{
-			pCity->setHasReligion(eReligion, true, true, false);
+			log(CvWString::format(L"Missionary spread %s to %s", GC.getReligionInfo(eReligion).getText(), pCity->getName().GetCString()));
+
+			pCity->spreadReligion(eReligion, true);
 			bSuccess = true;
 		}
 		else

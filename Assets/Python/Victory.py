@@ -220,7 +220,7 @@ dWonderGoals = {
 }
 
 dReligionGoals = {
-	iEthiopia: (0, [iCatholicism]),
+	iEthiopia: (0, [iOrthodoxy]),
 	iHolyRome: (1, [iProtestantism]),
 }
 		
@@ -738,11 +738,11 @@ def checkTurn(iGameTurn, iPlayer):
 				
 		# second goal: control or vassalize Spain, the Maghreb, Egypt, Mesopotamia and Persia in 1300 AD
 		if iGameTurn == getTurnForYear(1300):
-			bSpain = isControlledOrVassalized(iArabia, Areas.getNormalArea(iSpain, False))
-			bMaghreb = isControlledOrVassalized(iArabia, utils.getPlotList(tCarthageTL, tCarthageBR))
 			bEgypt = isControlledOrVassalized(iArabia, Areas.getCoreArea(iEgypt, False))
-			bMesopotamia = isControlledOrVassalized(iArabia, Areas.getCoreArea(iMesopotamia, False))
+			bMaghreb = isControlledOrVassalized(iArabia, utils.getPlotList(tCarthageTL, tCarthageBR))
+			bMesopotamia = isControlledOrVassalized(iArabia, Areas.getCoreArea(iBabylonia, False))
 			bPersia = isControlledOrVassalized(iArabia, Areas.getCoreArea(iPersia, False))
+			bSpain = isControlledOrVassalized(iArabia, Areas.getNormalArea(iSpain, False))
 			if bSpain and bMaghreb and bEgypt and bMesopotamia and bPersia:
 				win(iArabia, 1)
 			else:
@@ -931,11 +931,11 @@ def checkTurn(iGameTurn, iPlayer):
 		
 	elif iPlayer == iHolyRome:
 	
-		# first goal: control the Apostolic Palace and the Church of the Holy Sepulchre in 1200 AD
+		# first goal: control Saint Peter's Basilica and the Church of the Anastasis in 1200 AD
 		if iGameTurn == getTurnForYear(1200):
-			bApostolicPalace = getNumBuildings(iHolyRome, iApostolicPalace) > 0
-			bHolySepulchre = getNumBuildings(iHolyRome, iCatholicShrine) > 0
-			if bApostolicPalace and bHolySepulchre:
+			bSaintPeters = getNumBuildings(iHolyRome, iCatholicShrine) > 0
+			bAnastasis = getNumBuildings(iHolyRome, iOrthodoxShrine) > 0
+			if bSaintPeters and bAnastasis:
 				win(iHolyRome, 0)
 			else:
 				lose(iHolyRome, 0)
@@ -1222,7 +1222,7 @@ def checkTurn(iGameTurn, iPlayer):
 			
 		# second goal: make Ayutthaya the most populous city in the world in 1700 AD
 		if iGameTurn == getTurnForYear(1700):
-			if isBestCity(iThailand, (101, 33), cityPopulation):
+			if isBestCity(iThailand, (101, 33), cityPopulation) or isBestCity(iThailand, (102, 33), cityPopulation):
 				win(iThailand, 1)
 			else:
 				lose(iThailand, 1)
@@ -1683,7 +1683,7 @@ def onBuildingBuilt(iPlayer, iBuilding):
 	# second Indian goal: build 20 temples by 700 AD
 	elif iPlayer == iIndia:
 		if isPossible(iIndia, 1):
-			lTemples = [iProtestantTemple + i*4 for i in range(iNumReligions)]
+			lTemples = [iTemple + i*4 for i in range(iNumReligions)]
 			if iBuilding in lTemples:
 				iCounter = 0
 				for iTemple in lTemples:
@@ -3025,7 +3025,7 @@ def getUHVHelp(iPlayer, iGoal):
 			bHinduShrine = (getNumBuildings(iIndia, iHinduShrine) > 0)
 			aHelp.append(getIcon(bHinduShrine) + localText.getText("TXT_KEY_VICTORY_HINDU_SHRINE", ()) + ' ' + getIcon(bBuddhistShrine) + localText.getText("TXT_KEY_VICTORY_BUDDHIST_SHRINE", ()))
 		elif iGoal == 1:
-			lTemples = [iProtestantTemple + 4 * i for i in range(iNumReligions)]
+			lTemples = [iTemple + 4 * i for i in range(iNumReligions)]
 			iCounter = 0
 			for iTemple in lTemples:
 				iCounter += getNumBuildings(iIndia, iTemple)
@@ -3121,7 +3121,7 @@ def getUHVHelp(iPlayer, iGoal):
 			iNumIncense = pEthiopia.getNumAvailableBonuses(iIncense)
 			aHelp.append(getIcon(iNumIncense >= 3) + localText.getText("TXT_KEY_VICTORY_AVAILABLE_INCENSE_RESOURCES", (iNumIncense, 3)))
 		elif iGoal == 2:
-			bAfrica = isAreaFreeOfCivs(utils.getPlotList(SomaliaTL, tSomaliaBR), lCivGroups[0]) and isAreaFreeOfCivs(utils.getPlotList(tSubeqAfricaTL, tSubeqAfricaBR), lCivGroups[0])
+			bAfrica = isAreaFreeOfCivs(utils.getPlotList(tSomaliaTL, tSomaliaBR), lCivGroups[0]) and isAreaFreeOfCivs(utils.getPlotList(tSubeqAfricaTL, tSubeqAfricaBR), lCivGroups[0])
 			aHelp.append(getIcon(bAfrica) + localText.getText("TXT_KEY_VICTORY_NO_AFRICAN_COLONIES_CURRENT", ()))
 
 	elif iPlayer == iKorea:
@@ -3148,7 +3148,7 @@ def getUHVHelp(iPlayer, iGoal):
 				aHelp.append(getIcon(bSouthAmerica) + localText.getText("TXT_KEY_VICTORY_CONTROL_SOUTH_AMERICA", ()))
 			elif iGoal == 2:
 				iTradeGold = sd.getColombianTradeGold()
-				aHelp.append(getIcon(iTradeGold >= utils.getTurns(3000)) + localText.getText("TXT_KEY_VICTORY_TRADE_GOLD_RESOURCES", (iTradeGold, utils.getTurns(5000))))
+				aHelp.append(getIcon(iTradeGold >= utils.getTurns(3000)) + localText.getText("TXT_KEY_VICTORY_TRADE_GOLD_RESOURCES", (iTradeGold, utils.getTurns(3000))))
 
 	elif iPlayer == iByzantium:
 		if iGoal == 0:
@@ -3312,9 +3312,9 @@ def getUHVHelp(iPlayer, iGoal):
 
 	elif iPlayer == iHolyRome:
 		if iGoal == 0:
-			bApostolicPalace = getNumBuildings(iHolyRome, iApostolicPalace) > 0
-			bHolySepulchre = getNumBuildings(iHolyRome, iCatholicShrine) > 0
-			aHelp.append(getIcon(bApostolicPalace) + localText.getText("TXT_KEY_BUILDING_APOSTOLIC_PALACE", ()) + ' ' + getIcon(bHolySepulchre) + localText.getText("TXT_KEY_BUILDING_CATHOLIC_SHRINE", ()))
+			bSaintPeters = getNumBuildings(iHolyRome, iCatholicShrine) > 0
+			bAnastasis = getNumBuildings(iHolyRome, iCatholicShrine) > 0
+			aHelp.append(getIcon(bSaintPeters) + localText.getText("TXT_KEY_BUILDING_CATHOLIC_SHRINE", ()) + ' ' + getIcon(bAnastasis) + localText.getText("TXT_KEY_BUILDING_ORTHODOX_SHRINE", ()))
 		elif iGoal == 2:
 			iGreatArtists = countCitySpecialists(iHolyRome, tVienna, iSpecialistGreatArtist)
 			aHelp.append(getIcon(iGreatArtists >= 3) + localText.getText("TXT_KEY_VICTORY_GREAT_ARTISTS_SETTLED", ('Vienna', iGreatArtists, 3)))
@@ -3481,6 +3481,9 @@ def getUHVHelp(iPlayer, iGoal):
 		elif iGoal == 1:
 			pBestCity = getBestCity(iThailand, (101, 33), cityPopulation)
 			bBestCity = isBestCity(iThailand, (101, 33), cityPopulation)
+			if not bBestCity:
+				pBestCity = getBestCity(iThailand, (102, 33), cityPopulation)
+				bBestCity = isBestCity(iThailand, (102, 33), cityPopulation)
 			aHelp.append(getIcon(bBestCity) + localText.getText("TXT_KEY_VICTORY_MOST_POPULOUS_CITY", (pBestCity.getName(),)))
 		elif iGoal == 2:
 			bSouthAsia = isAreaOnlyCivs(tSouthAsiaTL, tSouthAsiaBR, lSouthAsianCivs)
